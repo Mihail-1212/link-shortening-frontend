@@ -127,7 +127,6 @@ export default {
     },
 
     generateShortLink(){
-      // this.newUrl
       function isValidAUrl(urlStr) {
         let url;
         try {
