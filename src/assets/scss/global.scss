@@ -1,0 +1,40 @@
+@import "colors.scss";
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+a {
+  text-decoration: none;
+  transition: 300ms;
+  cursor: pointer;
+}
+
+button {
+  text-decoration: none;
+  transition: 300ms;
+  outline: none;
+  cursor: pointer;
+  border: none;
+
+  background: $city-light;
+  padding: 8px 15px;
+  font-size: 14px;
+  border-radius: 5px;
+
+  &:hover {
+    background: $breeze;
+  }
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-align: center;
+  color: #2c3e50;
+  min-height: 100vh;
+}
