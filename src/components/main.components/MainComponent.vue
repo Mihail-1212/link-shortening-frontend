@@ -7,81 +7,37 @@
 
   <div class="row">
     <div class="col">
-      <form @submit.prevent="generateShortLink" class="text-end">
-        <div class="form-group text-start">
-          <label for="urlEnterInput">URL адрес</label>
-          <input type="url" class="form-control" id="urlEnterInput"  placeholder="Введите url адрес" v-model="newUrl" required>
-          <small id="urlInputHelp" class="form-text text-muted">Ввыдите URL адрес ссылки</small>
-        </div>
-        <button type="submit" class="btn btn-primary">Сгенерировать ссылку</button>
-      </form>
+      <short-link-generate-form
+        v-model:newUrl="newUrl"
+        @create="createShortLinkHandler"
+      >
+      </short-link-generate-form>
     </div>
   </div>
 
-  <div class="row mt-5" v-if="newShortLink">
-
-    <div class="col">
-
-      <div class="card text-start text-dark bg-light">
-        <div class="card-header position-relative">
-          Ссылка создана
-
-          <a href="#" class="btn border-0 position-absolute end-0 close translate-middle-y h-100" aria-label="close" @click="clearNewShortLink" >
-            &times;
-          </a>
-
-        </div>
-        <div class="card-body">
-          <h5 class="card-title">Ссылка успешно создана и доступна по адресу: {{ generateFullLink(newShortLink.hash_str) }}</h5>
-
-          <a href="#" class="btn btn-secondary" @click="generateAndCopyShortLink(newShortLink)">
-            Скопируйте ссылку!
-          </a>
-
-        </div>
-      </div>
-
-    </div>
-  </div>
+  <new-short-link-block 
+    class="mt-5" 
+    :newShortLink="newShortLink" 
+    @close="newShortLink=null"
+    @copy="copyShortLinkHandler"
+  >
+</new-short-link-block>
 
   <div class="row m-3">
     <h4 class="text-start">
-      Список ссылок
+      Список ссылок ({{ shortLinks.length }})
     </h4>
   </div>
   
   <div class="row">
     <div class="col">
-        <div class="list-group">
-          <div class="list-group-item" aria-current="true" v-for="shortLink in shortLinks" :key="shortLink.hash">
-            <div class="row">
-              <div class="col">
-                <div class="d-flex w-100 justify-content-between">
-                  <h5 class="mb-1">{{ shortLink.title }}</h5>
-                </div>
-                <p class="mb-1 text-start">{{ shortLink.url }}</p>
-                <small class="d-flex text-start text-muted">{{ generateFullLink(shortLink.hash_str) }}</small>
-              </div>
-              <div class="control-wrapper col-auto d-flex align-items-center">
-                <a href="#" class="btn border-0" @click="generateAndCopyShortLink(shortLink)" data-bs-toggle="tooltip" title="Копировать короткий адрес ссылки">
-                  <font-awesome-icon class="fa-2x" :icon="['fas', 'copy']" />
-                </a>
-
-                <a :href="generateFullLink(shortLink.hash_str)" class="btn border-0" data-bs-toggle="tooltip" title="Перейти на страницу">
-                  <font-awesome-icon class="fa-2x" :icon="['fas', 'link']" />
-                </a>
-
-                <a href="#" class="btn border-0" @click="showUpdateRecordPopup(shortLink)" data-bs-toggle="tooltip" title="Редактировать запись">
-                  <font-awesome-icon class="fa-2x" :icon="['fas', 'pen-to-square']" />
-                </a>
-
-                <a href="#" class="btn border-0" @click="showDeleteRecordPopup(shortLink)" data-bs-toggle="tooltip" title="Удалить короткую ссылку">
-                  <font-awesome-icon class="fa-2x" :icon="['fas', 'trash']" />
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
+      <short-link-list 
+        :shortLinks="shortLinks"
+        @copy="copyShortLinkHandler" 
+				@update="updateShortLinkHandler" 
+				@delete="deleteShortLinkHandler"
+      >
+      </short-link-list>
     </div>
 
   </div>
@@ -89,6 +45,8 @@
 </template>
 
 <script>
+import copy from 'copy-to-clipboard';
+import { generateFullUrlByHash, isValidUrl } from "@/components/shortlink.components/utils";
 
 import {
   GET_ALL_SHORT_LINKS,
@@ -97,12 +55,14 @@ import {
   GENERATE_SHORT_LINK_FROM_URL
 } from "@/store/actions/short_links"
 import { DismissReason } from "sweetalert2"
-import copy from 'copy-to-clipboard';
-
+import ShortLinkList from "@/components/shortlink.components/ShortLinkList";
+import ShortLinkGenerateForm from "@/components/shortlink.components/ShortLinkGenerateForm";
+import NewShortLinkBlock from "@/components/shortlink.components/NewShortLinkBlock";
 
 
 export default {
   name: 'MainComponent',
+
   data() {
     return {
       shortLinks: [],
@@ -110,40 +70,37 @@ export default {
       newUrl: "",
     }
   },
+
   components: {
+    ShortLinkList,
+    ShortLinkGenerateForm,
+    NewShortLinkBlock
   },
+
   mounted() {
     this.updateAllRowsList();
   },
+
   methods: {
     updateAllRowsList() {
       this.$store.dispatch(GET_ALL_SHORT_LINKS).then((shortLinkList) => {
-        this.shortLinks=shortLinkList || []
+        this.shortLinks=shortLinkList.sort((a, b) => {
+          return a.hash_str.toLowerCase().localeCompare(b.hash_str.toLowerCase())
+        }) || []
       }).catch(error => console.error(error));
     },
 
-    clearNewShortLink() {
-      this.newShortLink = null;
-    },
+    // Short links event handlers
 
-    generateShortLink(){
-      function isValidAUrl(urlStr) {
-        let url;
-        try {
-          url = new URL(urlStr);
-        } catch (_) {
-          return false;
-        }
-        return url.protocol === "http:" || url.protocol === "https:";
-      }
-
-      if (!isValidAUrl(this.newUrl)) {
+    createShortLinkHandler() {
+      if (!isValidUrl(this.newUrl)) {
         this.$swal({
           icon: 'error',
           title: `Вы ввели не URL адрес!`,
           showConfirmButton: false,
           timer: 1500
         });
+        return;
       }
 
       let newTitle = "Заголовок короткой ссылки";
@@ -182,18 +139,9 @@ export default {
       });
     },
 
-    generateFullLink(hash) {
-      const route = this.$router.resolve({
-        name: "RedirectToUrl",
-        params: { hash: hash }
-      });
-      const absoluteURL = new URL(route.href, window.location.origin).href;
-      return absoluteURL
-    },
-
-    generateAndCopyShortLink(shortLink) {
-      const { hash_str } = shortLink;
-      let absoluteURL = this.generateFullLink(hash_str);
+    copyShortLinkHandler(shortLink) {
+			const { hash_str } = shortLink;
+      let absoluteURL = generateFullUrlByHash(hash_str);
       copy(absoluteURL);
       this.$swal({
         icon: 'info',
@@ -202,19 +150,9 @@ export default {
         showConfirmButton: false,
         timer: 1500
       });
-    },
+		},
 
-    // Go to short link
-    goToShortLink(shortLink) {
-      const { hash_str } = shortLink;
-      this.$router.push({
-        name: "RedirectToUrl",
-        params: { hash: hash_str }
-      })
-    },
-
-    // Delete record
-    showDeleteRecordPopup(shortLink) {
+    deleteShortLinkHandler(shortLink) {
       this.$swal({
         title: 'Вы хотите удалить данную запись?',
         text: "Вы не сможете отменить данное действие!",
@@ -254,8 +192,7 @@ export default {
       })
     },
 
-    // Update record
-    showUpdateRecordPopup(shortLink) {
+    updateShortLinkHandler(shortLink) {
       this.$swal({
         title: 'Введите новый заголовок для данной записи',
         input: 'text',
@@ -293,7 +230,6 @@ export default {
         },
       });
     },
-
   }
 }
 </script>

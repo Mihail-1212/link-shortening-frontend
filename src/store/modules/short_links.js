@@ -74,8 +74,7 @@ const actions = {
         resolve(response.data)
       }).catch(error => reject(error))
     })
-  }
-
+  },
 }
 
 const mutations = {
