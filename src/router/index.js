@@ -13,7 +13,6 @@ const routes = [
 
   /* Redirect to full link url  */
   { 
-    // /:catchAll(.*)
     path: "/:hash", 
     name: 'RedirectToUrl',
     component: () => import('../views/RedirectShortLink.vue') 

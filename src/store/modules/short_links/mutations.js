@@ -11,6 +11,10 @@ const mutations = {
 	clearGeneratedShortLink: (state) => {
 		state.generatedShortLink = null;
 	},
+
+	receiveShortLink: (state, shortLink) => {
+		state.receivedShortLink = shortLink;
+	}
 }
 
 export default mutations;

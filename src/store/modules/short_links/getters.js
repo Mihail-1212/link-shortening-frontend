@@ -7,6 +7,10 @@ const getters = {
 
 	getNewShortLink: state => {
 		return state.generatedShortLink
+	},
+
+	getReceivedShortLink: state => {
+		return state.receivedShortLink;
 	}
 }
 

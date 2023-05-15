@@ -11,27 +11,41 @@
 </template>
 
 <script lang="js">
+// Vuex
+import { mapActions, mapGetters } from "vuex";
 
 export default {
   name: 'RedirectShortLink',
-  mounted() {
-    const redirectToNotFound = () => {
-      this.$router.push({
-        name: "PathNotFound"
-      })
-    }
-
+  async mounted() {
     let hash = this.$route.params.hash;
 
-    this.$store.dispatch("getShortLinkByHash", hash).then((data) => {
-      console.log(data);
-      // Redurect to url address
-      window.location.replace(data.url);
-    }).catch(error => {
-      console.error(error) 
-      // Redirect to 404 if error
-      redirectToNotFound();
-    });
+    try {
+      await this.getShortLinkByHash(hash)
+    } catch {
+      // Redirect to 404
+      this.redirectToNotFound();
+    }
   },
+
+  computed: mapGetters(['getReceivedShortLink']),
+  methods: {
+    ...mapActions(['getShortLinkByHash']),
+
+    redirectToNotFound() {
+      this.$router.push({ name: "PathNotFound"})
+    },
+  },
+
+  watch: {
+    getReceivedShortLink(newShortLink) {
+      if (newShortLink === null) {
+        // If received short link is null => redirect to not found
+        this.redirectToNotFound;
+      }
+
+      // Redirect to url address
+      window.location.replace(newShortLink.url);
+    }
+  }
 }
 </script>

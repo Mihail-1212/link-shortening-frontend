@@ -1,5 +1,6 @@
 const state = {
 	generatedShortLink: null,
+	receivedShortLink: null,
 	shortLinks: []
 }
 

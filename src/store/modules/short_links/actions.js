@@ -19,16 +19,21 @@ const actions = {
     })
   },
 
-	getShortLinkByHash: ({getters}, hash) => {
+	getShortLinkByHash: (ctx, hash) => {
     const request = {
       hash: hash
     };
     return new Promise((resolve, reject) => {
       axios.post(
-        getters.getShortLinksUrl + '/getShortLinkByHash', request
+        ctx.getters.getShortLinksUrl + '/getShortLinkByHash', request
       ).then(response => {
-        resolve(response.data)
-      }).catch(error => reject(error))
+        let shortLink = response.data;
+        ctx.commit("receiveShortLink", shortLink)
+        resolve(shortLink)
+      }).catch(error => {
+        console.error(error)
+        reject(error)
+      })
     })
   },
 	
