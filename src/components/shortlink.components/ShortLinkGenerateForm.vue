@@ -11,7 +11,7 @@
 				@input="newUrlInputHandler" 
 				required
 			>
-			<small id="urlInputHelp" class="form-text text-muted">Ввыдите URL адрес ссылки</small>
+			<small id="urlInputHelp" class="form-text text-muted">Введите URL адрес ссылки</small>
 		</div>
 		<button type="submit" class="btn btn-primary">Сгенерировать ссылку</button>
 	</form>
