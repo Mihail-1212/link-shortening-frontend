@@ -12,7 +12,7 @@
 
         </div>
         <div class="card-body">
-          <h5 class="card-title">Ссылка успешно создана и доступна по адресу: {{ generateFullLink(newShortLink.hash_str) }}</h5>
+          <h5 class="card-title">Ссылка успешно создана и доступна по адресу: {{ fullLink }}</h5>
 
           <a href="#" class="btn btn-secondary" @click="$emit('copy', newShortLink)">
             Скопируйте ссылку!
@@ -36,11 +36,11 @@ export default {
       required: false,
     }
   },
-  methods: {
-    generateFullLink(hash) {
-      return generateFullUrlByHash(hash);
-    }
-  }
+  computed: {
+		fullLink() {
+			return generateFullUrlByHash(this.newShortLink.hash_str);
+		},
+	},
 }
 </script>
 

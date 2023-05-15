@@ -17,22 +17,22 @@
 
   <new-short-link-block 
     class="mt-5" 
-    :newShortLink="newShortLink" 
-    @close="newShortLink=null"
+    :newShortLink="getNewShortLink" 
+    @close="closeGeneratedShortLink"
     @copy="copyShortLinkHandler"
   >
 </new-short-link-block>
 
   <div class="row m-3">
     <h4 class="text-start">
-      Список ссылок ({{ shortLinks.length }})
+      Список ссылок ({{ sortedShortLinkList.length }})
     </h4>
   </div>
   
   <div class="row">
     <div class="col">
       <short-link-list 
-        :shortLinks="shortLinks"
+        :shortLinks="sortedShortLinkList"
         @copy="copyShortLinkHandler" 
 				@update="updateShortLinkHandler" 
 				@delete="deleteShortLinkHandler"
@@ -46,18 +46,14 @@
 
 <script>
 import copy from 'copy-to-clipboard';
-import { generateFullUrlByHash, isValidUrl } from "@/components/shortlink.components/utils";
-
-import {
-  GET_ALL_SHORT_LINKS,
-  DELETE_SHORT_LINK,
-  CHANGE_SHORT_LINK_INFO,
-  GENERATE_SHORT_LINK_FROM_URL
-} from "@/store/actions/short_links"
-import { DismissReason } from "sweetalert2"
+// Vuex
+import { mapActions, mapGetters } from "vuex";
+// Components
 import ShortLinkList from "@/components/shortlink.components/ShortLinkList";
 import ShortLinkGenerateForm from "@/components/shortlink.components/ShortLinkGenerateForm";
 import NewShortLinkBlock from "@/components/shortlink.components/NewShortLinkBlock";
+// Shortlinks utils
+import { generateFullUrlByHash, isValidUrl } from "@/components/shortlink.components/utils";
 
 
 export default {
@@ -65,8 +61,6 @@ export default {
 
   data() {
     return {
-      shortLinks: [],
-      newShortLink: null,
       newUrl: "",
     }
   },
@@ -81,18 +75,26 @@ export default {
     this.updateAllRowsList();
   },
 
+  computed: {
+    ...mapGetters(['sortedShortLinkList', 'getNewShortLink'])
+  },
+
   methods: {
+    // Load vuex short links actions
+    ...mapActions(["getAllShortLinks", "deleteShortLink", "changeShortLinkInfo", "generateShortLinkFromUrl", "clearGeneratedShortLInk"]),
+
     updateAllRowsList() {
-      this.$store.dispatch(GET_ALL_SHORT_LINKS).then((shortLinkList) => {
-        this.shortLinks=shortLinkList.sort((a, b) => {
-          return a.hash_str.toLowerCase().localeCompare(b.hash_str.toLowerCase())
-        }) || []
-      }).catch(error => console.error(error));
+      // Return promise
+      this.getAllShortLinks();
     },
 
     // Short links event handlers
 
-    createShortLinkHandler() {
+    closeGeneratedShortLink() {
+      this.clearGeneratedShortLInk();
+    },
+
+    async createShortLinkHandler() {
       if (!isValidUrl(this.newUrl)) {
         this.$swal({
           icon: 'error',
@@ -106,23 +108,19 @@ export default {
       let newTitle = "Заголовок короткой ссылки";
       const newData = {title: newTitle, url: this.newUrl};
 
-      this.$store.dispatch(GENERATE_SHORT_LINK_FROM_URL, newData).then((newShortLink) => {
-        this.updateAllRowsList();
+      try {
+        await this.generateShortLinkFromUrl(newData);
+        // Show success message
         this.$swal({
           icon: 'success',
           title: 'Новая быстрая ссылка успешно создана!',
           showConfirmButton: false,
           timer: 1500
         });
-
-        // Set new short link block
-        this.newShortLink = newShortLink;
         // Set new url empty
         this.newUrl = "";
-      }).catch(error => {
-        console.error(error)
+      } catch (error) {
         let errorTitle = 'Произошла ошибка при создании новой быстрой ссылки!';
-
         if (error.response.status == 409) {
           // If hash(url) already exist in db
           errorTitle += "\nУказанный URL уже существует в базе данных!"
@@ -136,7 +134,7 @@ export default {
           showConfirmButton: false,
           timer: 2500
         });
-      });
+      }
     },
 
     copyShortLinkHandler(shortLink) {
@@ -152,47 +150,67 @@ export default {
       });
 		},
 
-    deleteShortLinkHandler(shortLink) {
-      this.$swal({
+    async deleteShortLinkHandler(shortLink) {
+      let result = await this.$swal({
         title: 'Вы хотите удалить данную запись?',
         text: "Вы не сможете отменить данное действие!",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Да, удалить!',
         cancelButtonText: 'Нет!',
-      }).then(result => {
-        if (result.isConfirmed) {
-          // Delete record
-          let onDeleteRecord = Object.assign({}, shortLink);
+      });
 
-          this.$store.dispatch(DELETE_SHORT_LINK, onDeleteRecord).then(() => {
-            this.updateAllRowsList();
-            this.$swal({
-              icon: 'success',
-              title: 'Запись успешно удалена',
-              showConfirmButton: false,
-              timer: 1500
-            });
-          }).catch(error => {
-            console.error(error)
-            this.$swal({
-              icon: 'error',
-              title: 'При удалении записи произошла ошибка',
-              showConfirmButton: false,
-              timer: 1500
-            });
-          });
+      if (!result.isConfirmed) {
+        this.$swal({
+          icon: 'error',
+          title: 'Отмена удаления записи!',
+        });
+        return;
+      }
 
-        } else if (result.dismiss === DismissReason.cancel) {
-          this.$swal({
-            icon: 'error',
-            title: 'Отмена удаления записи!',
-          })
-        }
-      })
+      let onDeleteRecord = Object.assign({}, shortLink);
+
+      try {
+        await this.deleteShortLink(onDeleteRecord);
+        this.$swal({
+          icon: 'success',
+          title: 'Запись успешно удалена',
+          showConfirmButton: false,
+          timer: 1500
+        });
+      } catch {
+        this.$swal({
+          icon: 'error',
+          title: 'При удалении записи произошла ошибка',
+          showConfirmButton: false,
+          timer: 1500
+        });
+      }
     },
 
-    updateShortLinkHandler(shortLink) {
+    async updateShortLinkHandler(shortLink) {
+      const preConfirmHandler = async (newTitle) => {
+        const updateRecord = Object.assign({}, shortLink);
+        updateRecord.title = newTitle;
+
+        try {
+          await this.changeShortLinkInfo(updateRecord);
+          this.$swal({
+            icon: 'success',
+            title: 'Запись успешно обновлена!',
+            showConfirmButton: false,
+            timer: 1500
+          });
+        } catch (error) {
+          this.$swal({
+            icon: 'error',
+            title: 'При обновлении записи произошла ошибка',
+            showConfirmButton: false,
+            timer: 1500
+          });
+        }
+      };
+
       this.$swal({
         title: 'Введите новый заголовок для данной записи',
         input: 'text',
@@ -206,28 +224,7 @@ export default {
         cancelButtonText: 'Отмена!',
 
         showLoaderOnConfirm: true,
-        preConfirm: (newTitle) => {
-          const updateRecord = Object.assign({}, shortLink)
-          updateRecord.title = newTitle;
-
-          this.$store.dispatch(CHANGE_SHORT_LINK_INFO, updateRecord).then(() => {
-            this.updateAllRowsList();
-            this.$swal({
-              icon: 'success',
-              title: 'Запись успешно обновлена!',
-              showConfirmButton: false,
-              timer: 1500
-            });
-          }).catch(error => {
-            console.error(error)
-            this.$swal({
-              icon: 'error',
-              title: 'При обновлении записи произошла ошибка',
-              showConfirmButton: false,
-              timer: 1500
-            });
-          });
-        },
+        preConfirm: preConfirmHandler,
       });
     },
   }

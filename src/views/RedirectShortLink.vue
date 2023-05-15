@@ -12,10 +12,6 @@
 
 <script lang="js">
 
-import {
-  GET_SHORT_LINK_BY_HASH
-} from "@/store/actions/short_links"
-
 export default {
   name: 'RedirectShortLink',
   mounted() {
@@ -27,7 +23,7 @@ export default {
 
     let hash = this.$route.params.hash;
 
-    this.$store.dispatch(GET_SHORT_LINK_BY_HASH, hash).then((data) => {
+    this.$store.dispatch("getShortLinkByHash", hash).then((data) => {
       console.log(data);
       // Redurect to url address
       window.location.replace(data.url);

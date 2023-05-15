@@ -21,16 +21,10 @@ let storeOptions = {
           return `${getters.getFullURL}/short-links`
       }
   },
+  modules: {
+		shortLinkModules
+	}
 }
-
-const assignObject = (saveObject, addObject) => {
-  Object.keys(addObject).forEach( (currentValue) => {
-      saveObject[currentValue] = Object.assign({}, saveObject[currentValue], addObject[currentValue])
-  })
-}
-
-// Connecting short links
-assignObject(storeOptions, shortLinkModules)
 
 
 export default createStore(storeOptions)
